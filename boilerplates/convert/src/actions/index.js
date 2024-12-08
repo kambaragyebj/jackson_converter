@@ -1,9 +1,16 @@
+import { ipcRenderer } from "electron";
+import _ from "lodash";
 import { ADD_VIDEO, ADD_VIDEOS, REMOVE_VIDEO, REMOVE_ALL_VIDEOS, VIDEO_PROGRESS, VIDEO_COMPLETE } from "./types";
 
 // TODO: Communicate to MainWindow process that videos
 // have been added and are pending conversion
 export const addVideos = videos => dispatch => {
+ 
+  ipcRenderer.send('videos:added', videos);
+  ipcRenderer.on('metadata:complete',( event, videosWithData) =>{
 
+     dispatch({ type: ADD_VIDEO, payload: videosWithData}); //redrux
+  });
 };
 
 
@@ -12,12 +19,29 @@ export const addVideos = videos => dispatch => {
 // from the MainWindow regarding the current state of
 // conversion.
 export const convertVideos = () => (dispatch, getState) => {
+  const videos = _.map(getState().videos);
+ 
+  ipcRenderer.send("conversion:start", videos);
+
+  ipcRenderer.on('conversion:end', (event, { video, outputPath })=>{
+
+    dispatch({ type: VIDEO_COMPLETE, payload: { ...video, outputPath }});
+
+  });
+
+  ipcRenderer.on('conversion:progress', (event, { video, timemark}) =>{
+
+    dispatch({ type: VIDEO_PROGRESS, payload: { ...video, timemark }});    
+
+  });
 
 };
 
 // TODO: Open the folder that the newly created video
 // exists in
 export const showInFolder = outputPath => dispatch => {
+
+  ipcRenderer.send('folder:open', outputPath);
 
 };
 
